@@ -13,6 +13,8 @@ class SmartContract(object):
         'PUSH': push,
         'POP': pop,
         'SWAP': swap,
+        'DUP': dup,
+        'NOW': now,
         'ADD': add,
         'SUB': sub,
         'MUL': mul,
@@ -54,6 +56,7 @@ class SmartContract(object):
         contract.memory = {}
 
     def send_amount(contract, amount: int, receiver: str):
+        print(f'SENDING {amount} to {receiver}')
         if contract.balance < int(amount):
             raise Exception('Invalid Balance')
         contract.balance -= int(amount)
@@ -77,6 +80,7 @@ class SmartContract(object):
             values = row.strip().split(' ')
             # control flow for IF
             if values[0] == 'IF':
+                print('USING LEFT OPTION')
                 top = contract.stack.pop()
                 if top == '0':
                     values[3:]
@@ -88,10 +92,12 @@ class SmartContract(object):
         contract.delete_memory()
 
 
-if __name__ == '__main__':
+def basic_example():
     code = '''
-        SLOAD magic_word
-        MLOAD magic_word
+        PUSH magic_word
+        SLOAD
+        PUSH my_guess
+        MLOAD
         EQUALS
         SENDER
         SWAP
@@ -100,4 +106,26 @@ if __name__ == '__main__':
         IF TRANSFER ELSE UNIT
     '''
     s = SmartContract(33, code, {'magic_word': 'boo'})
-    s.execute(100, 10, 'fafafafa', {'magic_word': 'boo'})
+    s.execute(100, 10, 'fafafafa', {'my_guess': 'boo'})
+
+
+def basic_example2():
+    code = '''
+        SENDER
+        SLOAD
+        AMOUNT
+        PUSH 3
+        MUL
+        ADD
+        SENDER
+        SSTORE
+        SENDER
+        SLOAD
+    '''
+    s = SmartContract(33, code, {'magic_word': 'boo', 'fafafafa': '200'})
+    s.execute(100, 10, 'fafafafa', {'my_guess': 'boo'})
+
+
+if __name__ == '__main__':
+    basic_example1()
+    basic_example2()

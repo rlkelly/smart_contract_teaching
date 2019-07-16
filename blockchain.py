@@ -24,22 +24,23 @@ class Blockchain(object):
         self.prev_block = self.prev_blocks[-1]
 
     def update(self, block: Block):
+        self.verify_block(block)
         self.prev_blocks.append(block)
         self.current_block = Block(creator, self.prev_blocks[-1].block_header_hash)
 
     def verify_transaction(self, transaction: Transaction) -> bool:
         return transaction.sender in self.accounts and transaction.amount < self.accounts[transaction.sender]
 
-    def verify_block(self) -> bool:
-        for transaction in self.current_block.transactions:
-            assert transaction.verify()
-        assert block.get_merkle_root == block.merkle_root
+    def verify_block(self, block: Block=None) -> bool:
+        block = self.current_block if block is None else block
+        block.verify_transactions()
+        cur_merkle_root = block.merkle_root
+        assert block.get_merkle_root() == cur_merkle_root
         assert int(block.get_header_hash().hex(), 16) < int(difficulty, 16)
         return True
 
     def mine_block(self) -> bool:
         self.current_block.get_merkle_root()
-        print(self.prev_blocks[-1].block_header_hash)
         block_hash = self.current_block.get_header_hash().hex()
         score = int(block_hash, 16) - int(self.difficulty, 16)
         print('score:', score)

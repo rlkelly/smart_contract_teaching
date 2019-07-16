@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import binascii
 from hashlib import sha256
 import json
 import pickle
@@ -8,6 +11,7 @@ from transaction import Coinbase, Transaction, generate_test_transaction
 
 class Block(object):
     def __init__(self, creator: str, prev_block_header_hash: bytes=None):
+        self.creator = creator
         self.nonce = 0
         self.transactions = [Coinbase(creator)]
         self.previous_block_header_hash = prev_block_header_hash
@@ -15,10 +19,13 @@ class Block(object):
         self.block_header_hash = None
         self.merkle_root = None
 
-    def add_transaction(self, transaction: Transaction):
-        self.transactions.append(transaction)
+    def _reset_header_hashes(self):
         self.block_header_hash = None
         self.merkle_root = None
+
+    def add_transaction(self, transaction: Transaction):
+        self.transactions.append(transaction)
+        self._reset_header_hashes()
 
     def increment_nonce(self):
         self.nonce += 1
@@ -54,21 +61,39 @@ class Block(object):
         self.merkle_root = transaction_strings[0]
         return self.merkle_root
 
-    def verify(self):
-        # TODO: Implement block verification
-        pass
-
-    def dumps(self):
-        return pickle.dumps(self).hex()
+    def verify_transactions(self):
+        for transaction in self.transactions:
+            assert transaction.verify()
 
     @staticmethod
-    def loads(data):
-        return pickle.loads(bytes.fromhex(data))
+    def loads(data) -> Block:
+        data = json.loads(data)
+        b =  Block(
+            creator=data['creator'],
+            prev_block_header_hash= binascii.unhexlify(data['previous_block_header_hash']),
+        )
+        b.transactions = [Transaction.loads(binascii.unhexlify(t)) for t in data['transactions']]
+        b.time = binascii.unhexlify(data['time'])
+        b.block_header_hash = data['block_header_hash']
+        b.merkle_root = binascii.unhexlify(data['merkle_root'])
+        b.nonce = data['nonce']
+        return b
+
+    def dumps(self) -> str:
+        return json.dumps({
+            'creator': self.creator,
+            'nonce': self.nonce,
+            'transactions': [t.dumps(with_sig=True).hex() for t in self.transactions],
+            'previous_block_header_hash':  self.previous_block_header_hash.hex(),
+            'time': self.time.hex(),
+            'block_header_hash': self.block_header_hash.hex(),
+            'merkle_root': self.merkle_root.hex(),
+        }).encode('utf-8')
 
 
 class GenesisBlock(Block):
     def __init__(self):
-        super(GenesisBlock, self).__init__(b'Noone', b'Nothing')
+        super(GenesisBlock, self).__init__('Noone', b'Nothing')
         self.block_header_hash = b'fafa'
 
     def get_merkle_root(self):
@@ -80,15 +105,14 @@ def test():
     t = generate_test_transaction(random=False)
     b = Block('3a1bcfa12a29a7ed68b1c70743a104cc37e6ae8e2c94653fcc1093707a62c448f98ac599df92d392a9f56c2a46bca5a375b9996f321c490b2e92c7c71cf1e134', b'')
     b.add_transaction(t)
-    b.get_merkle_root()
     b.set_time(b'10000000')
-    assert b.get_header_hash() == '66133b9317522b44b4a0acce652b8efb561b0e892f7a1b0e4ba603848f3f2ac1'
+    b.get_merkle_root()
+    assert b.get_header_hash().hex() == '24d5e60a7877a34527afefbb2e05c7940789f3c75dc783f23f85b81336c0881d'
     c = b.dumps()
     b = Block.loads(c)
-    assert b.get_header_hash() == '66133b9317522b44b4a0acce652b8efb561b0e892f7a1b0e4ba603848f3f2ac1'
+    assert b.get_header_hash().hex() == '24d5e60a7877a34527afefbb2e05c7940789f3c75dc783f23f85b81336c0881d'
 
     gb = GenesisBlock()
-    print(len(gb.dumps()))
     gb.get_merkle_root()
     gb.get_header_hash()
 

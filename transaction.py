@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import binascii
 import json
 
 from signatures import generate_keypair, sign_message, verify
@@ -9,7 +12,7 @@ class Transaction(object):
         sender: str,
         receiver: str,
         amount: int,
-        signature: str=None,
+        signature: string='',
     ):
         self.sender = sender
         self.receiver = receiver
@@ -18,7 +21,7 @@ class Transaction(object):
 
     def verify(self) -> bool:
         try:
-            assert self.signature
+            assert self.signature != ''
             assert verify(self.dumps(), self.signature, self.sender)
             return True
         except:
@@ -28,10 +31,24 @@ class Transaction(object):
         self.signature = sign_message(self.dumps(), private_key)
         return self.signature
 
-    def dumps(self) -> str:
+    @staticmethod
+    def loads(data) -> Transaction:
+        data = json.loads(data)
+        if 'signature' in data:
+            data['signature'] = binascii.unhexlify(data['signature'])
+        return Transaction(**data)
+
+    def dumps(self, with_sig: bool=False) -> bytes:
+        if with_sig:
+            return json.dumps({
+                'sender': self.sender,
+                'receiver': self.receiver,
+                'amount': self.amount,
+                'signature': self.signature,
+            }).encode('utf-8')
         return json.dumps({
-            'from': self.sender,
-            'to': self.receiver,
+            'sender': self.sender,
+            'receiver': self.receiver,
             'amount': self.amount,
         }).encode('utf-8')
 

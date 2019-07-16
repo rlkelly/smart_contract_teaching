@@ -1,3 +1,6 @@
+import time
+
+
 class Stack(object):
     def __init__(self, contract):
         self.stack = []
@@ -19,10 +22,19 @@ def push(stack: Stack, *args):
 def pop(stack: Stack, *args):
     return stack.pop()
 
+def dup(stack: Stack, *args):
+    val = stack[-1]
+    stack.push(val)
+
+def now(stack: Stack, *args):
+    stack.push(str(int(time.time())))
+
 def add(stack: Stack, *args):
     x = stack.pop()
     y = stack.pop()
-    stack.push(x + y)
+    x = 0 if x == 'Unit' else int(x)
+    y = 0 if y == 'Unit' else int(y)
+    stack.push(str(x + y))
 
 def sub(stack: Stack, *args):
     x = stack.pop()
@@ -32,7 +44,9 @@ def sub(stack: Stack, *args):
 def mul(stack: Stack, *args):
     x = stack.pop()
     y = stack.pop()
-    stack.push(x * y)
+    x = 0 if x == 'Unit' else int(x)
+    y = 0 if y == 'Unit' else int(y)
+    stack.push(str(x * y))
 
 def div(stack: Stack, *args):
     x = stack.pop()
@@ -73,30 +87,31 @@ def swap(stack: Stack, *args):
     stack.push(y)
 
 def sstore(stack: Stack, *args):
-    key: str = args[0]
-    value = args[1]
+    key: str = stack.pop()
+    value = stack.pop()
     stack.contract.update_storage(key, value)
 
 def sload(stack: Stack, *args):
-    key: str = args[0]
-    stack.push(stack.contract.storage[key])
+    key: str = stack.pop()
+    try:
+        stack.push(stack.contract.storage[key])
+    except KeyError:
+        stack.push('Unit')
 
 def mstore(stack: Stack, *args):
-    key: str = args[0]
-    value = args[1]
+    key: str = stack.pop()
+    value = stack.pop()
     stack.contract.update_memory(key, value)
 
 def mload(stack: Stack, *args):
-    print(stack.contract.memory)
-    key: str = args[0]
+    key: str = stack.pop()
     stack.push(stack.contract.memory[key])
 
 def sender(stack: Stack, *args):
     stack.push(stack.contract.sender)
 
 def amount(stack: Stack, *args):
-    sender = sel
-    stack.push(stack.contract.amount)
+    stack.push(str(stack.contract.sent_amount))
 
 def balance(stack: Stack, *args):
     stack.push(str(stack.contract.balance))
