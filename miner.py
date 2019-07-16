@@ -7,21 +7,6 @@ import requests
 from blockchain import Blockchain
 
 
-app = Flask(__name__)
-
-@app.route('/ping')
-def home():
-    return 'I am awake still'
-
-@app.route('/add_peer', methods=['PUT'])
-def add_peer():
-    data = json.dumps(request.json)
-    peer = data['peer']
-
-if __name__ == "__main__":
-    app.run(debug=True)
-
-
 class Miner(object):
     def __init__(self, blockchain: Blockchain):
         self.peers = []
@@ -33,6 +18,9 @@ class Miner(object):
 
     def add_peer(self, peer):
         self.peers.append(peer)
+        self.peers = list(set(self.peers))
+        self.validate_peers()
+        print('added peer')
 
     def validate_peer(self, peer):
         r = requests.get(peer + '/ping')
@@ -45,23 +33,33 @@ class Miner(object):
 
     def send_block_to_peers(self):
         for peer in self.peers:
-            r = requests.put(peer + '/block', json=self.blockchain.prev_blocks[-1])
+            block = self.blockchain.prev_blocks[-1]
+            print(len(block.dumps()))
+            r = requests.put(peer + '/block', json={'block': block.dumps()})
+        self.validate_peers()
+
+    def share_peers(self):
+        for i in range(len(self.peers)):
+            others = [elt for num, elt in enumerate(self.peers) if not num == k]
+            for o in others:
+                requests.put(self.peers[i] + '/peer', json={'peer': o})
+
+    def update(self, block_data):
+        print('Received New Block!')
+        block = Block.loads(block_data)
+        if block.verify():
+            self.blockchain.update(block)
 
     def mine(self):
         while True:
-            print('iter')
+            print('peers:', self.peers)
             if self.toggle:
-                print('TEST!!!')
+                print('TOGGLED!!!')
                 # This can be used to periodically trigger things
                 self.toggle()
 
-            x = self.blockchain.mine_block()
-            if x == True:
+            x: bool = self.blockchain.mine_block()
+            if x:
                 print('FOUND BLOCK!!!!')
                 self.validate_peers()
-                self.send_block_to_peers(self, self.blockchain.prev_blocks[-1])
-
-
-
-if __name__ == '__main__':
-    m = Miner(Blockchain())
+                self.send_block_to_peers()

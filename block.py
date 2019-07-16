@@ -14,11 +14,10 @@ class Block(object):
         self.time = bytes(int(time.time()))
         self.block_header_hash = None
         self.merkle_root = None
-        self.header_hash = None
 
     def add_transaction(self, transaction: Transaction):
         self.transactions.append(transaction)
-        self.header_hash = None
+        self.block_header_hash = None
         self.merkle_root = None
 
     def increment_nonce(self):
@@ -33,10 +32,10 @@ class Block(object):
         m.update(self.time)
         m.update(self.previous_block_header_hash)
         m.update(bytes(self.nonce))
-        self.header_hash = m.digest().hex()
-        return self.header_hash
+        self.block_header_hash = m.digest()
+        return self.block_header_hash
 
-    def get_merkle_root(self):
+    def get_merkle_root(self) -> bytes:
         # This is a simple implementation of finding the merkle root for the transactions
         transaction_strings = list(sorted([t.dumps() for t in self.transactions]))
         if len(transaction_strings) % 2 != 0:
@@ -55,12 +54,17 @@ class Block(object):
         self.merkle_root = transaction_strings[0]
         return self.merkle_root
 
+    def verify(self):
+        # TODO: Implement block verification
+        pass
+
     def dumps(self):
-        return pickle.dumps(self)
+        return pickle.dumps(self).hex()
 
     @staticmethod
     def loads(data):
-        return pickle.loads(data)
+        return pickle.loads(bytes.fromhex(data))
+
 
 class GenesisBlock(Block):
     def __init__(self):
@@ -84,6 +88,7 @@ def test():
     assert b.get_header_hash() == '66133b9317522b44b4a0acce652b8efb561b0e892f7a1b0e4ba603848f3f2ac1'
 
     gb = GenesisBlock()
+    print(len(gb.dumps()))
     gb.get_merkle_root()
     gb.get_header_hash()
 
